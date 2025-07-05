@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Live Emotion Detection</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h1>Live Emotion Detection</h1>
+  <video id="video" width="320" height="240" autoplay></video>
+  <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+
+  <h2 id="emotion">Detecting...</h2>
+  <div id="songs"></div>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const emotionText = document.getElementById('emotion');
+    const songsDiv = document.getElementById('songs');
+
+    // Start webcam
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => video.srcObject = stream)
+      .catch(err => console.error("Camera error:", err));
+
+    // Capture + send every 2s
+    function captureAndSend() {
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = canvas.toDataURL('image/jpeg');
+
+      fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageData })
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log("Server response:", data);
+        if (data.emotion) {
+          emotionText.textContent = `Detected Emotion: ${data.emotion}`;
+          songsDiv.innerHTML = `<h3>Recommended Songs</h3><ul>` +
+            data.songs.map(s => `<li>${s.name} – ${s.artist}</li>`).join('') + `</ul>`;
+        } else {
+          emotionText.textContent = 'No face detected...';
+          songsDiv.innerHTML = '';
+        }
+      })
+      .catch(err => {
+        console.error("Error from /predict:", err);
+      });
+    }
+
+    setInterval(captureAndSend, 2000); // Every 2 seconds
+  </script>
+</body>
+</html>
