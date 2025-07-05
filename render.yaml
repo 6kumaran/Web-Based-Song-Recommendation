@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: emotion-app
+    runtime: python
+    buildCommand: ""
+    startCommand: python app.py
